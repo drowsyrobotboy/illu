@@ -1,0 +1,29 @@
+body {
+    font-family: sans-serif; 
+    padding: 1rem;
+    background-color: #000; 
+    color: #fff; 
+}
+
+div.main-grid{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: .5rem;
+}
+
+.dot {
+    width: 1rem;
+    height: .1rem;
+    background: #fff;
+    animation: oscillate 1s ease-in-out infinite alternate;
+}
+
+@keyframes oscillate {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(300%);
+    }
+})

@@ -37,7 +37,7 @@ func main() {
 	// SSE Endpoint for Hacker News updates
 	http.HandleFunc("/hn-events", hnEventsHandler)
 
-	fmt.Println("Server starting on :8080 (Hyderabad, Telangana, India, June 22, 2025)")
+	fmt.Println("Server starting on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 

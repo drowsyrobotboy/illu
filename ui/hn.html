@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Illu | Front Room</title>
+    <style>
+        body {
+            font-family: sans-serif; 
+            padding: 1rem;
+            background-color: #000; 
+            color: #fff; 
+        }
+
+        h1, h2 { color: #0056b3; }
+
+        #updates-container {
+            border: 1px solid #ddd;
+            padding: 15px;
+            min-height: 100px;
+            background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .story-item {
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed #eee;
+            font-size: 0.95em;
+        }
+        .story-item:last-child {
+            border-bottom: none;
+        }
+        .story-item a {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .story-item a:hover {
+            text-decoration: underline;
+        }
+        .meta-info {
+            font-size: 0.85em;
+            color: #666;
+            margin-left: 10px;
+        }
+        .initial-load {
+            font-style: italic;
+            color: #888;
+        }
+        .info-message {
+            color: #555;
+            font-style: italic;
+        }
+        .error-message {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Live Hacker News Updates (Go Backend)</h1>
+    <p>This page receives new top Hacker News stories in real-time using Server-Sent Events from a Go backend.</p>
+
+    <div id="updates-container">
+        <p class="initial-load">Connecting to stream... new stories will appear here.</p>
+    </div>
+
+    <script src="./js/script.js"></script>
+</body>
+</html>
