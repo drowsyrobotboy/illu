@@ -1,8 +1,10 @@
 package main
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"sync"
@@ -58,9 +60,16 @@ func init() {
 	lastSentStoryIDs.ids = make(map[int]struct{})
 }
 
+//go:embed ui/*
+var uiFiles embed.FS
+
 func main() {
-	// Serve UI files directly from the root path
-	http.Handle("/", http.FileServer(http.Dir("ui")))
+	// Serve UI files directly EMBEDED from the root path
+	subFS, err := fs.Sub(uiFiles, "ui")
+	if err != nil {
+		log.Fatalf("Failed to create sub filesystem: %v", err)
+	}
+	http.Handle("/", http.FileServer(http.FS(subFS)))
 
 	// SSE Endpoint for Hacker News updates
 	http.HandleFunc("/hn-events", hnEventsHandler)
@@ -77,52 +86,61 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
+	ctx := r.Context()
+
 	for {
-		cpuPercent, _ := cpu.Percent(0, false)
-		cpuCores, _ := cpu.Counts(true)
-		loadAvg, _ := load.Avg()
-		vmem, _ := mem.VirtualMemory()
-		swap, _ := mem.SwapMemory()
-		sensors, _ := host.SensorsTemperatures()
-		disk, _ := disk.Usage("/")
+		select {
+		case <-ctx.Done():
+			log.Println("Stats SSE client disconnected.")
+			return
+		default:
+			cpuPercent, _ := cpu.Percent(0, false)
+			cpuCores, _ := cpu.Counts(true)
+			loadAvg, _ := load.Avg()
+			vmem, _ := mem.VirtualMemory()
+			swap, _ := mem.SwapMemory()
+			sensors, _ := host.SensorsTemperatures()
+			disk, _ := disk.Usage("/")
 
-		temp := 0.0
-		for _, s := range sensors {
-			if s.SensorKey == "Package id 0" || s.SensorKey == "Tdie" || s.SensorKey == "coretemp" {
-				temp = s.Temperature
-				break
+			temp := 0.0
+			for _, s := range sensors {
+				if s.SensorKey == "Package id 0" || s.SensorKey == "Tdie" || s.SensorKey == "coretemp" {
+					temp = s.Temperature
+					break
+				}
 			}
+
+			cpuPercentValue := 0.0
+			if len(cpuPercent) > 0 {
+				cpuPercentValue = cpuPercent[0]
+			}
+
+			stats := Stats{
+				CPUPercent:    cpuPercentValue,
+				CPUCores:      cpuCores,
+				Load1:         loadAvg.Load1,
+				Load5:         loadAvg.Load5,
+				Load15:        loadAvg.Load15,
+				MemoryUsed:    vmem.Used / (1024 * 1024),
+				MemoryTotal:   vmem.Total / (1024 * 1024),
+				MemoryPercent: vmem.UsedPercent,
+				SwapUsed:      swap.Used / (1024 * 1024),
+				SwapTotal:     swap.Total / (1024 * 1024),
+				SwapPercent:   swap.UsedPercent,
+				TempC:         temp,
+				DiskUsed:      disk.Used / (1024 * 1024),
+				DiskTotal:     disk.Total / (1024 * 1024),
+				DiskPercent:   disk.UsedPercent,
+			}
+
+			jsonData, _ := json.Marshal(stats)
+			fmt.Fprintf(w, "data: %s\n\n", jsonData)
+			if f, ok := w.(http.Flusher); ok {
+				f.Flush()
+			}
+
+			time.Sleep(2 * time.Second)
 		}
-
-		stats := Stats{
-			CPUPercent: cpuPercent[0],
-			CPUCores:   cpuCores,
-			Load1:      loadAvg.Load1,
-			Load5:      loadAvg.Load5,
-			Load15:     loadAvg.Load15,
-
-			MemoryUsed:    vmem.Used / (1024 * 1024),
-			MemoryTotal:   vmem.Total / (1024 * 1024),
-			MemoryPercent: vmem.UsedPercent,
-
-			SwapUsed:    swap.Used / (1024 * 1024),
-			SwapTotal:   swap.Total / (1024 * 1024),
-			SwapPercent: swap.UsedPercent,
-
-			TempC: temp,
-
-			DiskUsed:    disk.Used / (1024 * 1024),
-			DiskTotal:   disk.Total / (1024 * 1024),
-			DiskPercent: disk.UsedPercent,
-		}
-
-		jsonData, _ := json.Marshal(stats)
-		fmt.Fprintf(w, "data: %s\n\n", jsonData)
-		if f, ok := w.(http.Flusher); ok {
-			f.Flush()
-		}
-
-		time.Sleep(2 * time.Second)
 	}
 }
 
