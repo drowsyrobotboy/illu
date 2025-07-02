@@ -14,7 +14,36 @@
             <div class="time-display" id="timeDisplay"></div>
             <div class="dot"></div>
         </div>
+        <div class="stats-container">
+            <h2>CPU</h2>
+            <div>Usage: <span id="cpu_percent">-</span>%</div>
+            <div>Cores: <span id="cpu_cores">-</span></div>
+
+            <h2>Load Average</h2>
+            <div>1 min: <span id="load1">-</span></div>
+            <div>5 min: <span id="load5">-</span></div>
+            <div>15 min: <span id="load15">-</span></div>
+
+            <h2>Memory</h2>
+            <div>Used: <span id="mem_used">-</span> MB</div>
+            <div>Total: <span id="mem_total">-</span> MB</div>
+            <div>Usage: <span id="mem_percent">-</span>%</div>
+
+            <h2>Swap</h2>
+            <div>Used: <span id="swap_used">-</span> MB</div>
+            <div>Total: <span id="swap_total">-</span> MB</div>
+            <div>Usage: <span id="swap_percent">-</span>%</div>
+
+            <h2>Temperature</h2>
+            <div>CPU Temp: <span id="temp">-</span> °C</div>
+
+            <h2>Disk</h2>
+            <div>Used: <span id="disk_used">-</span> MB</div>
+            <div>Total: <span id="disk_total">-</span> MB</div>
+            <div>Usage: <span id="disk_percent">-</span>%</div>
+        </div>
     </div>
     <script src="./js/clock.js" type="text/javascript"></script>
+    <script src="./js/stats.js" type="text/javascript"></script>
 </body>
 </html>

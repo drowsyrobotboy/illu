@@ -7,6 +7,12 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/shirou/gopsutil/disk"
+	"github.com/shirou/gopsutil/load"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/host"
+	"github.com/shirou/gopsutil/v3/mem"
 )
 
 // HNStory represents a simplified Hacker News story structure
@@ -17,6 +23,28 @@ type HNStory struct {
 	By    string `json:"by"`
 	Score int    `json:"score"`
 	Type  string `json:"type"`
+}
+
+type Stats struct {
+	CPUPercent float64 `json:"cpu_percent"`
+	CPUCores   int     `json:"cpu_cores"`
+	Load1      float64 `json:"load1"`
+	Load5      float64 `json:"load5"`
+	Load15     float64 `json:"load15"`
+
+	MemoryUsed    uint64  `json:"mem_used"`
+	MemoryTotal   uint64  `json:"mem_total"`
+	MemoryPercent float64 `json:"mem_percent"`
+
+	SwapUsed    uint64  `json:"swap_used"`
+	SwapTotal   uint64  `json:"swap_total"`
+	SwapPercent float64 `json:"swap_percent"`
+
+	TempC float64 `json:"temp"`
+
+	DiskUsed    uint64  `json:"disk_used"`
+	DiskTotal   uint64  `json:"disk_total"`
+	DiskPercent float64 `json:"disk_percent"`
 }
 
 // Global state to track the IDs of stories last sent to clients for *delta* updates.
@@ -37,8 +65,65 @@ func main() {
 	// SSE Endpoint for Hacker News updates
 	http.HandleFunc("/hn-events", hnEventsHandler)
 
+	// SSE Endpoint for stats
+	http.HandleFunc("/stats", statsHandler)
+
 	fmt.Println("Server starting on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+func statsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	for {
+		cpuPercent, _ := cpu.Percent(0, false)
+		cpuCores, _ := cpu.Counts(true)
+		loadAvg, _ := load.Avg()
+		vmem, _ := mem.VirtualMemory()
+		swap, _ := mem.SwapMemory()
+		sensors, _ := host.SensorsTemperatures()
+		disk, _ := disk.Usage("/")
+
+		temp := 0.0
+		for _, s := range sensors {
+			if s.SensorKey == "Package id 0" || s.SensorKey == "Tdie" || s.SensorKey == "coretemp" {
+				temp = s.Temperature
+				break
+			}
+		}
+
+		stats := Stats{
+			CPUPercent: cpuPercent[0],
+			CPUCores:   cpuCores,
+			Load1:      loadAvg.Load1,
+			Load5:      loadAvg.Load5,
+			Load15:     loadAvg.Load15,
+
+			MemoryUsed:    vmem.Used / (1024 * 1024),
+			MemoryTotal:   vmem.Total / (1024 * 1024),
+			MemoryPercent: vmem.UsedPercent,
+
+			SwapUsed:    swap.Used / (1024 * 1024),
+			SwapTotal:   swap.Total / (1024 * 1024),
+			SwapPercent: swap.UsedPercent,
+
+			TempC: temp,
+
+			DiskUsed:    disk.Used / (1024 * 1024),
+			DiskTotal:   disk.Total / (1024 * 1024),
+			DiskPercent: disk.UsedPercent,
+		}
+
+		jsonData, _ := json.Marshal(stats)
+		fmt.Fprintf(w, "data: %s\n\n", jsonData)
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+
+		time.Sleep(2 * time.Second)
+	}
 }
 
 // hnEventsHandler manages the Server-Sent Events connection for Hacker News.
